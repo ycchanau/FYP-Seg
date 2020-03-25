@@ -1,0 +1,77 @@
+{
+    "name": "TM2-HRNetV2_OCR_Nearest",
+    "n_gpu": 1,
+    "use_synch_bn": false,
+
+    "arch": {
+        "type": "HRNetV2_OCR_Nearest",
+        "args": {
+            "backbone": "resnet18",
+            "freeze_bn": false,
+            "freeze_backbone": false
+        }
+    },
+
+    "train_loader": {
+        "type": "TM2",
+        "args":{
+            "data_dir": "/home/ubuntu/TM2",
+            "batch_size": 8,
+            "base_size": 512,
+            "crop_size": false,
+            "augment": true,
+            "shuffle": true,
+            "scale": false,
+            "flip": false,
+            "rotate": false,
+            "blur": false,
+            "split": "train",
+            "num_workers": 8
+        }
+    },
+
+    "val_loader": {
+        "type": "TM2",
+        "args":{
+            "data_dir": "/home/ubuntu/TM2",
+            "batch_size": 8,
+            "base_size": 512,
+            "val": true,
+            "split": "test",
+            "num_workers": 4
+        }
+    },
+
+    "optimizer": {
+        "type": "SGD",
+        "differential_lr": true,
+        "args":{
+            "lr": 0.0001,
+            "weight_decay": 1e-4,
+            "momentum": 0.9
+        }
+    },
+
+    "loss": "Weighted_CrossEntropyLoss2d",
+    "ignore_index": 255,
+    "lr_scheduler": {
+        "type": "Poly",
+        "args": {}
+    },
+
+    "trainer": {
+        "epochs": 350,
+        "save_dir": "saved/",
+        "save_period": 50,
+  
+        "monitor": "max Mean_IoU",
+        "early_stop": 10,
+        
+        "tensorboard": false,
+        "log_dir": "saved/runs",
+        "log_per_iter": 20,
+
+        "val": true,
+        "val_per_epochs": 5
+    }
+}
