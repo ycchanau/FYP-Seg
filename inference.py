@@ -241,68 +241,68 @@ def main():
 
     image_files = sorted(glob(os.path.join(args.images, f'*.{args.extension}')))
 
-    with open("fp16_model.engine", 'rb') as f, trt.Runtime(trt.Logger(trt.Logger.WARNING)) as runtime, torch.no_grad():
+    # with open("fp16_model.engine", 'rb') as f, trt.Runtime(trt.Logger(trt.Logger.WARNING)) as runtime, torch.no_grad():
 
-        engine = runtime.deserialize_cuda_engine(f.read())
-        inputs, outputs, bindings, stream = allocate_buffers(engine) # input, output: host # bindings
-        shape_of_output = (1, num_classes, 128, 128)
+    #     engine = runtime.deserialize_cuda_engine(f.read())
+    #     inputs, outputs, bindings, stream = allocate_buffers(engine) # input, output: host # bindings
+    #     shape_of_output = (1, num_classes, 128, 128)
 
-        with engine.create_execution_context() as context:
+    #     with engine.create_execution_context() as context:
 
-            tbar = tqdm(image_files, ncols=100)
-            total_image=0
-            total_pixel_correct=0
-            total_pixel_labeled=0
-            cls_total_IOU = np.zeros(num_classes)
-            cls_total_pix_acc = np.zeros(num_classes)
-            cls_total_pix_correct=np.zeros(num_classes)
-            cls_total_pix_labeled=np.zeros(num_classes)
-            Total_Inference_Time=0
+    #         tbar = tqdm(image_files, ncols=100)
+    #         total_image=0
+    #         total_pixel_correct=0
+    #         total_pixel_labeled=0
+    #         cls_total_IOU = np.zeros(num_classes)
+    #         cls_total_pix_acc = np.zeros(num_classes)
+    #         cls_total_pix_correct=np.zeros(num_classes)
+    #         cls_total_pix_labeled=np.zeros(num_classes)
+    #         Total_Inference_Time=0
 
-            for img_file in tbar:
-                total_image += 1      
-                image = Image.open(img_file).convert('RGB')
-                original_size=image.size
+    #         for img_file in tbar:
+    #             total_image += 1      
+    #             image = Image.open(img_file).convert('RGB')
+    #             original_size=image.size
 
-                image_name = os.path.basename(img_file)
-                target=Image.open("/home/ubuntu/TM2/mask/"+image_name)
+    #             image_name = os.path.basename(img_file)
+    #             target=Image.open("/home/ubuntu/TM2/mask/"+image_name)
 
-                if base_size:
-                    image = image.resize(size=(base_size, base_size), resample=Image.BILINEAR)
-                    target = target.resize(size=(base_size, base_size), resample=Image.NEAREST)
+    #             if base_size:
+    #                 image = image.resize(size=(base_size, base_size), resample=Image.BILINEAR)
+    #                 target = target.resize(size=(base_size, base_size), resample=Image.NEAREST)
                 
-                ticks = time.time()
-                input = to_tensor(image).unsqueeze(0)
-                trt_input_image = to_numpy(input)
-                inputs[0].host = trt_input_image.reshape(-1)              
-                trt_outputs = do_inference(context, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-                trt_feat = postprocess_the_outputs(trt_outputs[0], shape_of_output)
-                trt_prediction = F.interpolate(torch.from_numpy(trt_feat), size=(512,512), mode='bilinear', align_corners=True)                
-                trt_prediction = trt_prediction.squeeze(0).cpu().numpy()
-                trt_prediction = F.softmax(torch.from_numpy(trt_prediction), dim=0).argmax(0).cpu().numpy()
+    #             ticks = time.time()
+    #             input = to_tensor(image).unsqueeze(0)
+    #             trt_input_image = to_numpy(input)
+    #             inputs[0].host = trt_input_image.reshape(-1)              
+    #             trt_outputs = do_inference(context, bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
+    #             trt_feat = postprocess_the_outputs(trt_outputs[0], shape_of_output)
+    #             trt_prediction = F.interpolate(torch.from_numpy(trt_feat), size=(512,512), mode='bilinear', align_corners=True)                
+    #             trt_prediction = trt_prediction.squeeze(0).cpu().numpy()
+    #             trt_prediction = F.softmax(torch.from_numpy(trt_prediction), dim=0).argmax(0).cpu().numpy()
 
-                Total_Inference_Time += time.time()-ticks
+    #             Total_Inference_Time += time.time()-ticks
 
-                ####################################
-                _,_,iou = inter_over_union(trt_prediction, target, num_classes)
-                cls_total_IOU = cls_total_IOU + iou
+    #             ####################################
+    #             _,_,iou = inter_over_union(trt_prediction, target, num_classes)
+    #             cls_total_IOU = cls_total_IOU + iou
 
-                pixel_correct, pixel_labeled=my_pixel_accuracy(trt_prediction,target)
-                total_pixel_correct+=pixel_correct
-                total_pixel_labeled+=pixel_labeled
-                for i in range(num_classes):
-                    cls_pix_correct, cls_pix_labeled, acc=class_pixel_accuracy(trt_prediction,target,i)
-                    cls_total_pix_correct[i]+=cls_pix_correct
-                    cls_total_pix_labeled[i]+=cls_pix_labeled
-                    cls_total_pix_acc[i]+=acc
+    #             pixel_correct, pixel_labeled=my_pixel_accuracy(trt_prediction,target)
+    #             total_pixel_correct+=pixel_correct
+    #             total_pixel_labeled+=pixel_labeled
+    #             for i in range(num_classes):
+    #                 cls_pix_correct, cls_pix_labeled, acc=class_pixel_accuracy(trt_prediction,target,i)
+    #                 cls_total_pix_correct[i]+=cls_pix_correct
+    #                 cls_total_pix_labeled[i]+=cls_pix_labeled
+    #                 cls_total_pix_acc[i]+=acc
 
-                save_images(image, target, trt_prediction, args.output, img_file, palette, original_size)
+    #             save_images(image, target, trt_prediction, args.output, img_file, palette, original_size)
 
-            print("time used: {}".format(Total_Inference_Time))
-            print("pix acc: {}".format(total_pixel_correct/total_pixel_labeled))
-            print("class pix acc: {}".format(cls_total_pix_correct/cls_total_pix_labeled))
-            print("avg class IOU: {}".format(cls_total_IOU/total_image))
-            print("avg class pix_acc: {}".format(cls_total_pix_acc/total_image))
+    #         print("time used: {}".format(Total_Inference_Time))
+    #         print("pix acc: {}".format(total_pixel_correct/total_pixel_labeled))
+    #         print("class pix acc: {}".format(cls_total_pix_correct/cls_total_pix_labeled))
+    #         print("avg class IOU: {}".format(cls_total_IOU/total_image))
+    #         print("avg class pix_acc: {}".format(cls_total_pix_acc/total_image))
             
     with torch.no_grad():
         tbar = tqdm(image_files, ncols=100)

@@ -6,17 +6,17 @@
     "arch": {
         "type": "HRNetV2_OCR_Nearest",
         "args": {
-            "backbone": "resnet18",
+            "backbone": "",
             "freeze_bn": false,
             "freeze_backbone": false
         }
     },
 
     "train_loader": {
-        "type": "TM2",
+        "type": "FOOD",
         "args":{
-            "data_dir": "/home/ubuntu/TM2",
-            "batch_size": 8,
+            "data_dir": "/home/ubuntu/FOOD",
+            "batch_size": 7,
             "base_size": 512,
             "crop_size": false,
             "augment": true,
@@ -31,10 +31,10 @@
     },
 
     "val_loader": {
-        "type": "TM2",
+        "type": "FOOD",
         "args":{
-            "data_dir": "/home/ubuntu/TM2",
-            "batch_size": 8,
+            "data_dir": "/home/ubuntu/FOOD",
+            "batch_size": 7,
             "base_size": 512,
             "val": true,
             "split": "test",
